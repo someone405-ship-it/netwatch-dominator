@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Connection history"""
+"""Connection history with model"""
 
 import json
 import time
@@ -27,11 +27,13 @@ class HistoryDB:
     def record(self, device):
         mac = device.mac.lower()
         now = time.time()
+        model = getattr(device, "model", None) or getattr(device, "vendor", "")
         if mac not in self.records:
             self.records[mac] = {
                 "mac": mac, "ip": device.ip, "hostname": device.hostname,
-                "vendor": getattr(device, "vendor", ""),
+                "model": model,
                 "device_type": getattr(device, "device_type", "unknown"),
+                "os_guess": getattr(device, "os_guess", ""),
                 "first_seen": now, "last_seen": now, "seen_count": 1,
                 "ips": [device.ip],
             }
@@ -41,6 +43,7 @@ class HistoryDB:
             r["seen_count"] = r.get("seen_count", 0) + 1
             r["ip"] = device.ip
             r["hostname"] = device.hostname or r.get("hostname", "")
+            r["model"] = model or r.get("model", "")
             if device.ip not in r.get("ips", []):
                 r.setdefault("ips", []).append(device.ip)
         self.save()
