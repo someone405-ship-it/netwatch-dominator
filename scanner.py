@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Network discovery, live view, traffic hints"""
+"""Network discovery — upgraded"""
 
 import socket
-import struct
 import time
 import threading
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional
+from typing import Dict, List
 import netifaces
-import psutil
 
 try:
     from scapy.all import ARP, Ether, srp, conf, get_if_list, get_if_addr
@@ -68,7 +67,6 @@ class NetworkScanner:
             return "127.0.0.1"
 
     def _get_subnet(self):
-        # simple /24 assumption for most home nets
         parts = self.local_ip.split(".")
         return ".".join(parts[:3]) + ".0/24"
 
@@ -80,13 +78,13 @@ class NetworkScanner:
 
     def _guess_type(self, mac, hostname):
         h = (hostname or "").lower()
-        if any(x in h for x in ("iphone", "android", "pixel", "galaxy")):
+        if any(x in h for x in ("iphone", "android", "pixel", "galaxy", "oneplus")):
             return "mobile"
-        if any(x in h for x in ("macbook", "imac", "pc-", "desktop", "laptop")):
+        if any(x in h for x in ("macbook", "imac", "pc-", "desktop", "laptop", "surface")):
             return "computer"
-        if any(x in h for x in ("tv", "roku", "chromecast", "firestick")):
+        if any(x in h for x in ("tv", "roku", "chromecast", "firestick", "shield")):
             return "media"
-        if any(x in h for x in ("printer", "hp-", "epson")):
+        if any(x in h for x in ("printer", "hp-", "epson", "canon")):
             return "printer"
         return "unknown"
 
@@ -94,18 +92,14 @@ class NetworkScanner:
         prefix = mac.upper().replace(":", "")[:6]
         if prefix in self._oui_cache:
             return self._oui_cache[prefix]
-        # minimal offline OUI hints
         known = {
-            "001A11": "Google",
-            "F0D1A9": "Apple",
-            "3C5AB4": "Google",
-            "B827EB": "Raspberry Pi",
-            "DC:A6:32": "Raspberry Pi",
-            "00:50:56": "VMware",
-            "08:00:27": "VirtualBox",
+            "001A11": "Google", "F0D1A9": "Apple", "3C5AB4": "Google",
+            "B827EB": "RaspberryPi", "DCA632": "RaspberryPi",
+            "005056": "VMware", "080027": "VirtualBox",
+            "F4F5E8": "Google", "A4C138": "Xiaomi", "FCDBB3": "Samsung",
         }
         for k, v in known.items():
-            if prefix.startswith(k.replace(":", "")):
+            if prefix.startswith(k):
                 self._oui_cache[prefix] = v
                 return v
         self._oui_cache[prefix] = "unknown"
@@ -114,7 +108,6 @@ class NetworkScanner:
     def arp_scan(self):
         found = {}
         if not SCAPY:
-            # fallback: ping sweep + arp table
             return self._fallback_scan()
         try:
             conf.verb = 0
@@ -135,30 +128,25 @@ class NetworkScanner:
                 found[mac] = d
                 self.history.record(d)
         except Exception as e:
-            print("[scanner] arp error:", e)
+            print("[scanner]", e)
         return found
 
     def _fallback_scan(self):
-        # pure python arp table + ping
         found = {}
         now = time.time()
-        # read system arp
         try:
             if sys.platform.startswith("win"):
                 import subprocess
-                out = subprocess.check_output("arp -a", shell=True, text=True)
+                out = subprocess.check_output("arp -a", shell=True, text=True, errors="ignore")
                 for line in out.splitlines():
-                    if "dynamic" in line.lower() or "static" in line.lower():
-                        parts = line.split()
-                        if len(parts) >= 2:
-                            ip = parts[0]
-                            mac = parts[1].replace("-", ":").lower()
-                            if mac.count(":") == 5:
-                                host = self._resolve_hostname(ip)
-                                d = Device(ip=ip, mac=mac, hostname=host,
-                                           first_seen=now, last_seen=now)
-                                found[mac] = d
-                                self.history.record(d)
+                    parts = line.split()
+                    if len(parts) >= 2 and ("dynamic" in line.lower() or "static" in line.lower()):
+                        ip, mac = parts[0], parts[1].replace("-", ":").lower()
+                        if mac.count(":") == 5:
+                            host = self._resolve_hostname(ip)
+                            d = Device(ip=ip, mac=mac, hostname=host, first_seen=now, last_seen=now)
+                            found[mac] = d
+                            self.history.record(d)
             else:
                 with open("/proc/net/arp") as f:
                     next(f)
@@ -167,8 +155,7 @@ class NetworkScanner:
                         if len(parts) >= 4 and parts[2] != "0x0":
                             ip, mac = parts[0], parts[3]
                             host = self._resolve_hostname(ip)
-                            d = Device(ip=ip, mac=mac, hostname=host,
-                                       first_seen=now, last_seen=now)
+                            d = Device(ip=ip, mac=mac, hostname=host, first_seen=now, last_seen=now)
                             found[mac] = d
                             self.history.record(d)
         except Exception:
@@ -177,18 +164,18 @@ class NetworkScanner:
 
     def port_scan(self, ip, ports=None):
         if ports is None:
-            ports = [21, 22, 23, 80, 443, 445, 3389, 8080, 8443]
+            ports = [21,22,23,80,443,445,3389,8080,8443,5555,27042]
         open_ports = []
         def check(p):
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(0.4)
+                s.settimeout(0.35)
                 if s.connect_ex((ip, p)) == 0:
                     open_ports.append(p)
                 s.close()
             except Exception:
                 pass
-        with ThreadPoolExecutor(max_workers=20) as ex:
+        with ThreadPoolExecutor(max_workers=24) as ex:
             list(ex.map(check, ports))
         return sorted(open_ports)
 
@@ -198,21 +185,16 @@ class NetworkScanner:
             while self.running:
                 found = self.arp_scan()
                 with self.lock:
-                    # mark offline
                     for mac, d in list(self.devices.items()):
                         if mac not in found:
                             d.is_online = False
-                    # update / add
                     for mac, d in found.items():
                         if mac in self.devices:
                             old = self.devices[mac]
                             d.first_seen = old.first_seen
-                            d.bytes_sent = old.bytes_sent
-                            d.bytes_recv = old.bytes_recv
                         self.devices[mac] = d
                 time.sleep(interval)
-        t = threading.Thread(target=loop, daemon=True)
-        t.start()
+        threading.Thread(target=loop, daemon=True).start()
 
     def stop_live(self):
         self.running = False
@@ -222,15 +204,13 @@ class NetworkScanner:
             return list(self.devices.values())
 
     def deauth(self, target_mac, count=5):
-        """Requires monitor mode + scapy. Educational / lab only."""
         if not SCAPY:
             return False, "scapy missing"
         try:
             from scapy.all import Dot11, Dot11Deauth, RadioTap, sendp
-            # needs monitor iface — user must set it
             pkt = RadioTap() / Dot11(addr1=target_mac, addr2="ff:ff:ff:ff:ff:ff",
                                      addr3="ff:ff:ff:ff:ff:ff") / Dot11Deauth()
             sendp(pkt, count=count, inter=0.1, verbose=0)
-            return True, "deauth sent"
+            return True, "deauth frames sent"
         except Exception as e:
             return False, str(e)

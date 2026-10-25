@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Persistent connection history"""
+"""Connection history"""
 
 import json
 import time
+import csv
 from pathlib import Path
 from typing import List, Dict
-from dataclasses import asdict
 
 class HistoryDB:
     def __init__(self, path: Path):
@@ -29,14 +29,10 @@ class HistoryDB:
         now = time.time()
         if mac not in self.records:
             self.records[mac] = {
-                "mac": mac,
-                "ip": device.ip,
-                "hostname": device.hostname,
+                "mac": mac, "ip": device.ip, "hostname": device.hostname,
                 "vendor": getattr(device, "vendor", ""),
                 "device_type": getattr(device, "device_type", "unknown"),
-                "first_seen": now,
-                "last_seen": now,
-                "seen_count": 1,
+                "first_seen": now, "last_seen": now, "seen_count": 1,
                 "ips": [device.ip],
             }
         else:
@@ -56,15 +52,12 @@ class HistoryDB:
         return self.records.get(mac.lower())
 
     def export_csv(self, path: Path):
-        import csv
         rows = self.all()
-        if not rows:
-            return
+        if not rows: return
         keys = list(rows[0].keys())
         with open(path, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=keys)
             w.writeheader()
             for r in rows:
-                # flatten lists
                 flat = {k: (",".join(v) if isinstance(v, list) else v) for k, v in r.items()}
                 w.writerow(flat)

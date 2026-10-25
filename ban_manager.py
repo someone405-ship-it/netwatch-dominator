@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Permanent MAC ban / unban with persistence"""
+"""Permanent MAC ban"""
 
 import json
 import time
+import sys
+import subprocess
 from pathlib import Path
 from typing import Dict, List
 
@@ -26,12 +28,8 @@ class BanManager:
     def ban(self, mac: str, reason: str = "", ip: str = "", hostname: str = ""):
         mac = mac.lower().replace("-", ":")
         self.bans[mac] = {
-            "mac": mac,
-            "reason": reason,
-            "ip": ip,
-            "hostname": hostname,
-            "banned_at": time.time(),
-            "active": True
+            "mac": mac, "reason": reason, "ip": ip, "hostname": hostname,
+            "banned_at": time.time(), "active": True
         }
         self.save()
         self._apply_local_block(mac)
@@ -59,38 +57,18 @@ class BanManager:
         return list(self.bans.values())
 
     def _apply_local_block(self, mac):
-        """Best-effort local firewall + ARP poison note"""
-        import sys, subprocess
         try:
-            if sys.platform.startswith("win"):
-                # Windows Firewall outbound block by MAC is limited;
-                # we add a note and use netsh if possible
-                pass
-            else:
-                # Linux: iptables / nft mac match if available
-                subprocess.run(
-                    ["iptables", "-A", "INPUT", "-m", "mac", "--mac-source", mac, "-j", "DROP"],
-                    capture_output=True
-                )
-                subprocess.run(
-                    ["iptables", "-A", "FORWARD", "-m", "mac", "--mac-source", mac, "-j", "DROP"],
-                    capture_output=True
-                )
+            if not sys.platform.startswith("win"):
+                subprocess.run(["iptables", "-A", "INPUT", "-m", "mac", "--mac-source", mac, "-j", "DROP"], capture_output=True)
+                subprocess.run(["iptables", "-A", "FORWARD", "-m", "mac", "--mac-source", mac, "-j", "DROP"], capture_output=True)
         except Exception:
             pass
 
     def _remove_local_block(self, mac):
-        import sys, subprocess
         try:
             if not sys.platform.startswith("win"):
-                subprocess.run(
-                    ["iptables", "-D", "INPUT", "-m", "mac", "--mac-source", mac, "-j", "DROP"],
-                    capture_output=True
-                )
-                subprocess.run(
-                    ["iptables", "-D", "FORWARD", "-m", "mac", "--mac-source", mac, "-j", "DROP"],
-                    capture_output=True
-                )
+                subprocess.run(["iptables", "-D", "INPUT", "-m", "mac", "--mac-source", mac, "-j", "DROP"], capture_output=True)
+                subprocess.run(["iptables", "-D", "FORWARD", "-m", "mac", "--mac-source", mac, "-j", "DROP"], capture_output=True)
         except Exception:
             pass
 
